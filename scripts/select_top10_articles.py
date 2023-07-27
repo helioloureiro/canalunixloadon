@@ -16,7 +16,6 @@ SITE_PATH = "/helioloureiro/canalunixloadon/tree/master/pautas"
 save_output = False
 output_filename = None
 
-
 def get_http_content(url: str) -> str:
     req = requests.get(url)
     if req.status_code != 200:
@@ -32,13 +31,6 @@ def line_match(line: str) -> bool:
     if not re.search("[0-9]\.md", line):
         return False
     return True
-
-
-def line_html_sanitize(line: str) -> str:
-    line = re.sub(".* href=\"", "", line)
-    line = re.sub("\">.*", "", line)
-    return line
-
 
 def get_latest() -> str:
     article = []
@@ -57,11 +49,6 @@ def get_latest() -> str:
     print("Latest:", sorted(article)[-1])
     return sorted(article)[-1]
 
-
-def unblob(url: str) -> str:
-    return re.sub("/blob", "", url)
-
-
 Array = List[str]
 
 
@@ -73,7 +60,7 @@ def get_articles() -> Array:
     articles = []
     latest_article = get_latest()
     print(f'Fetching: {SITE_RAW}/{latest_article}')
-    body = get_http_content(unblob(f'{SITE_RAW}/{latest_article}'))
+    body = get_http_content(f'{SITE_RAW}/{latest_article}')
     for line in body.split("\n"):
         if not re.search("\*", line):
             continue
