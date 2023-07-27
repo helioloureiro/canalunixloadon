@@ -6,15 +6,18 @@ import random
 from typing import List
 #import argparse
 import time
+import json
+import sys
 
 SITE = "https://github.com"
-SITE_RAW = "https://raw.githubusercontent.com"
+SITE_RAW = "https://raw.githubusercontent.com/helioloureiro/canalunixloadon/master"
 SITE_PATH = "/helioloureiro/canalunixloadon/tree/master/pautas"
 
 save_output = False
 output_filename = None
 
-def get_html(url: str) -> str:
+
+def get_http_content(url: str) -> str:
     req = requests.get(url)
     if req.status_code != 200:
         raise Exception(req.text)
@@ -30,38 +33,47 @@ def line_match(line: str) -> bool:
         return False
     return True
 
+
 def line_html_sanitize(line: str) -> str:
     line = re.sub(".* href=\"", "", line)
     line = re.sub("\">.*", "", line)
     return line
 
+
 def get_latest() -> str:
     article = []
-    body = get_html(SITE + SITE_PATH)
+    print(f'Fetching from: {SITE}{SITE_PATH}')
+    content = get_http_content(SITE + SITE_PATH)
+
+    json_body = json.loads(content)
 
     print(" = Articles =")
-    for line in body.split('\n'):
-        if not line_match(line):
+    for link in json_body['payload']['tree']['items']:
+        if not re.search("[0-9]", link['name']):
             continue
-        line = line_html_sanitize(line)
-        print(" *", line)
-        article.append(line)
+        print(" *", link['path'])
+        article.append(link['path'])
 
     print("Latest:", sorted(article)[-1])
     return sorted(article)[-1]
 
+
 def unblob(url: str) -> str:
     return re.sub("/blob", "", url)
 
+
 Array = List[str]
+
+
 def get_random_article(article_array: Array) -> str:
     return random.choice(article_array)
+
 
 def get_articles() -> Array:
     articles = []
     latest_article = get_latest()
-    print(SITE_RAW + latest_article)
-    body = get_html(unblob(SITE_RAW + latest_article))
+    print(f'Fetching: {SITE_RAW}/{latest_article}')
+    body = get_http_content(unblob(f'{SITE_RAW}/{latest_article}'))
     for line in body.split("\n"):
         if not re.search("\*", line):
             continue
@@ -70,42 +82,49 @@ def get_articles() -> Array:
         raise Exception("No articles found.")
     return articles
 
+
 def get_final_article() -> str:
     articles = get_articles()
     final_article = get_random_article(articles)
     print("Article selected:", final_article)
     return final_article
 
+
 def get_title(article: str) -> str:
     article = re.sub(".*\[", "", article)
     article = re.sub("\].*", "", article)
     return article
+
 
 def get_link(article: str) -> str:
     article = re.sub(".*\(", "", article)
     article = re.sub("\).*", "", article)
     return article
 
+
 def get_output_filename() -> str:
     if globals()["output_filename"] is None:
-        output_filename = time.strftime("random_article_output-%Y-%m-%d-%H:%M:%S.log")
+        output_filename = time.strftime(
+            "random_article_output-%Y-%m-%d-%H:%M:%S.log")
         globals()["output_filename"] = output_filename
     return output_filename
+
 
 def save_line(article: str) -> None:
     if globals()["save_output"] is True:
         with open(output_filename, "a") as output:
             output.write(article + "\n")
 
+
 def getTop(articles, nr=10):
     selected = []
     for i in range(nr):
         art = get_random_article(articles)
-        print(i,") art:", art)
+        print(i, ") art:", art)
         articles.remove(art)
         selected.append(art)
-    return {"pautas" : selected,
-            "proxima" : articles }
+    return {"pautas": selected, "proxima": articles}
+
 
 def generatePauta(dic_articles):
     text = '''
@@ -136,6 +155,7 @@ Pra fechar
 '''
     return text
 
+
 def printArticles():
     articles = get_articles()
     result = getTop(articles, 15)
@@ -148,4 +168,3 @@ if __name__ == '__main__':
     #args = parser.parse_args()
 
     printArticles()
-
