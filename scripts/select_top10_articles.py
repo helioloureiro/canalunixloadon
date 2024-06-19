@@ -20,15 +20,15 @@ def get_http_content(url: str) -> str:
     req = requests.get(url)
     if req.status_code != 200:
         raise Exception(req.text)
-    return req.text
+    return req
 
 
 def line_match(line: str) -> bool:
     if not re.search("span", line):
         return False
-    if not re.search("\.md", line):
+    if not re.search(r"\.md", line):
         return False
-    if not re.search("[0-9]\.md", line):
+    if not re.search(r"[0-9]\.md", line):
         return False
     return True
 
@@ -37,11 +37,24 @@ def get_latest() -> str:
     print(f'Fetching from: {SITE}{SITE_PATH}')
     content = get_http_content(SITE + SITE_PATH)
 
-    json_body = json.loads(content)
+    ## format changed on github
+    ## curl -s https://github.com/helioloureiro/canalunixloadon/tree/master/pautas | grep "react-app.embeddedData" | sed "s/<\/.*//;s/.*>//"
+
+    json_body = None
+    for line in content.text.splitlines():
+        if not re.search("react-app.embeddedData", line):
+            continue
+        line = re.sub(r"</.*", "", line)
+        line = re.sub(r".*>", "", line)
+        json_body = json.loads(line)
+
+    if json_body is None:
+        print("Failed to get json body:", content.text[0:100])
+        raise Exception("Failed to get json body")
 
     print(" = Articles =")
     for link in json_body['payload']['tree']['items']:
-        if not re.search("[0-9]", link['name']):
+        if not re.search(r"[0-9]", link['name']):
             continue
         print(" *", link['path'])
         article.append(link['path'])
@@ -60,9 +73,9 @@ def get_articles() -> Array:
     articles = []
     latest_article = get_latest()
     print(f'Fetching: {SITE_RAW}/{latest_article}')
-    body = get_http_content(f'{SITE_RAW}/{latest_article}')
+    body = get_http_content(f'{SITE_RAW}/{latest_article}').text
     for line in body.split("\n"):
-        if not re.search("\*", line):
+        if not re.search(r"\*", line):
             continue
         articles.append(line)
     if len(articles) == 0:
@@ -78,14 +91,14 @@ def get_final_article() -> str:
 
 
 def get_title(article: str) -> str:
-    article = re.sub(".*\[", "", article)
-    article = re.sub("\].*", "", article)
+    article = re.sub(r".*\[", "", article)
+    article = re.sub(r"\].*", "", article)
     return article
 
 
 def get_link(article: str) -> str:
-    article = re.sub(".*\(", "", article)
-    article = re.sub("\).*", "", article)
+    article = re.sub(r".*\(", "", article)
+    article = re.sub(r"\).*", "", article)
     return article
 
 
